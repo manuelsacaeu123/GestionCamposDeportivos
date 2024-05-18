@@ -15,4 +15,8 @@ const alquilerSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model('Alquiler', alquilerSchema, 'alquiler');
-  
+
+
+
+
+
