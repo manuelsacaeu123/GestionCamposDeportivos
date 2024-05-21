@@ -1,7 +1,7 @@
 {
   "name": "gestioncamposdeportivos",
   "version": "1.0.0",
-  "description": "",
+  "description": "Tema: GESTION DE CAMPOS DEPORTIVOS",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -21,5 +21,8 @@
   "devDependencies": {
     "jest": "^29.7.0",
     "supertest": "^7.0.0"
+  },
+  "directories": {
+    "test": "test"
   }
 }

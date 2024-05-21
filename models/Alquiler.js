@@ -11,7 +11,10 @@ const alquilerSchema = new mongoose.Schema({
   duracion: Number,
   estado: String,
   empleadoAtencion: String,
-  detalle: String
+  detalle: String,
+  usuario: {
+    type: mongoose.Schema.Types.ObjectId, ref: 'Usuario'
+  }
 });
 
 module.exports = mongoose.model('Alquiler', alquilerSchema, 'alquiler');

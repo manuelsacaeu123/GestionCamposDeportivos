@@ -2,12 +2,14 @@ const express = require('express');
 const moment = require('moment');
 const router = express.Router();
 const Alquiler = require('../models/Alquiler');
+const UsuarioModel = require('../models/Usuario');
+
 //CREATE
 router.post('/crear', async (req, res) => {
     try {
         const nuevoAlquiler = new Alquiler({
             cliente: req.body.cliente,
-            carnet: req.body.carnet, 
+            carnet: req.body.carnet,
             nombrecancha: req.body.nombrecancha,
             fechaSolicitud: req.body.fechaSolicitud,
             fecha_hora_inicio: req.body.fecha_hora_inicio,
@@ -16,7 +18,8 @@ router.post('/crear', async (req, res) => {
             duracion: req.body.duracion,
             estado: req.body.estado,
             empleadoAtencion: req.body.empleadoAtencion,
-            detalle: req.body.detalle
+            detalle: req.body.detalle,
+            usuario: req.body.usuario //asignar el id de usuario
         });
 
         const alquilerGuardado = await nuevoAlquiler.save();
@@ -31,10 +34,10 @@ router.post('/crear', async (req, res) => {
 //READ 
 // Obtener todos los alquileres
 router.get('/getAlquileres', async (req, res) => {
-    try  {
+    try {
         const alquileres = await Alquiler.find();
         res.json(alquileres);
-    } catch (error){
+    } catch (error) {
         res.status(500).json({ mensaje: error.message });
     }
 });
@@ -46,7 +49,7 @@ router.get('/getAlquiler/:id', async (req, res) => {
         if (!alquiler)
             return res.status(404).json({ mensaje: 'Alquiler no encontrado' });
         res.json(alquiler);
-    } catch(error) {
+    } catch (error) {
         res.status(500).json({ mensaje: error.message });
     }
 });
@@ -85,8 +88,8 @@ router.get('/alquileresPorEstado/:estado/:anio', async (req, res) => {
     try {
         const estado = req.params.estado;
         const anio = req.params.anio;
-        const fechaInicioAnio = new Date(anio, 0, 1); 
-        const fechaFinAnio = new Date(anio, 11, 31, 23, 59, 59); 
+        const fechaInicioAnio = new Date(anio, 0, 1);
+        const fechaFinAnio = new Date(anio, 11, 31, 23, 59, 59);
         const alquileres = await Alquiler.find({
             estado: estado,
             fecha_hora_inicio: { $gte: fechaInicioAnio },
@@ -102,11 +105,11 @@ router.get('/alquileresPorEstado/:estado/:anio', async (req, res) => {
 //2 Obtener el total de ganancias EN UNA CANCHA ESPECIFICA DENTRO DE UN RANGO DE FECHAS
 router.get('/gananciasXCancha/:nombreCancha/:fechaInicio/:fechaFin', async (req, res) => {
     try {
-       
+
         const nombreCancha = req.params.nombreCancha;
         const fechaInicio = new Date(req.params.fechaInicio);
         const fechaFin = new Date(req.params.fechaFin);
- const alquileres = await Alquiler.find({
+        const alquileres = await Alquiler.find({
             nombrecancha: nombreCancha,
             fecha_hora_inicio: { $gte: fechaInicio },
             fecha_hora_fin: { $lte: fechaFin }
@@ -122,7 +125,7 @@ router.get('/gananciasXCancha/:nombreCancha/:fechaInicio/:fechaFin', async (req,
         res.status(500).json({ mensaje: error.message });
     }
 });
- 
+
 //3 ELIMINAR TODOS ALQUILERES CON ESTADO= "CANCELADO" Y SI YA PASO MAS DE UN AÑO
 
 router.delete('/eliminarAlquileresCanceladosAntiguos', async (req, res) => {
@@ -148,7 +151,7 @@ router.delete('/eliminarAlquileresCanceladosAntiguos', async (req, res) => {
 //4 TODOS LOS ALQUILERES REALIZADOS POR UN CLIENTE Y EN QUE CANCHAS
 router.get('/alquileresXCliente/:carnetCliente', async (req, res) => {
     try {
-        
+
         const carnetCliente = req.params.carnetCliente;
         const alquileresCliente = await Alquiler.find({
             carnet: carnetCliente
@@ -168,13 +171,13 @@ router.get('/alquileresXCliente/:carnetCliente', async (req, res) => {
         res.status(500).json({ mensaje: error.message });
     }
 });
- 
+
 //5 TOTAL DE GANANCIAS POR CANCHAS
 router.get('/gananciasPorCancha', async (req, res) => {
     try {
         const gananciasPorCancha = await Alquiler.aggregate([
             {
-                $match: { estado: "Alquiler" } 
+                $match: { estado: "Alquiler" }
             },
             {
                 $group: {
@@ -212,7 +215,7 @@ router.put('/actualizarCliente/:carnet', async (req, res) => {
     }
 });
 
- 
+
 //7 OBTENER EL CLIENTE CON MAS HORAS DE ALQUILER
 router.get('/clienteConMasHorasAlquiler', async (req, res) => {
     try {
@@ -233,6 +236,23 @@ router.get('/clienteConMasHorasAlquiler', async (req, res) => {
         }
 
         res.status(200).json(resultado[0]);
+    } catch (error) {
+        res.status(500).json({ mensaje: error.message });
+    }
+});
+
+//REPORTES
+//ALQUILER POR USUARIO
+
+router.get('/alquilerXusuario/:id', async (req, res) => {
+    const { id: usuarioId } = req.params; // Usar destructuring para extraer y renombrar `id` a `usuarioId`
+    try {
+        const usuario = await UsuarioModel.findById(usuarioId);
+        if (!usuario) {
+            return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+        }
+        const alquileres = await Alquiler.find({ usuario: usuarioId }).populate('usuario');
+        res.json(alquileres);
     } catch (error) {
         res.status(500).json({ mensaje: error.message });
     }
