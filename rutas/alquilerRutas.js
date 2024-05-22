@@ -3,33 +3,30 @@ const moment = require('moment');
 const router = express.Router();
 const Alquiler = require('../models/Alquiler');
 const UsuarioModel = require('../models/Usuario');
+const ClienteModel = require('../models/Cliente');
+const CanchaModel = require('../models/Cancha');
 
 //CREATE
-router.post('/crear', async (req, res) => {
+router.post('/crearAlquiler', async (req, res) => {
     try {
-        const nuevoAlquiler = new Alquiler({
-            cliente: req.body.cliente,
-            carnet: req.body.carnet,
-            nombrecancha: req.body.nombrecancha,
-            fechaSolicitud: req.body.fechaSolicitud,
-            fecha_hora_inicio: req.body.fecha_hora_inicio,
-            fecha_hora_fin: req.body.fecha_hora_fin,
-            precio: req.body.precio,
-            duracion: req.body.duracion,
-            estado: req.body.estado,
-            empleadoAtencion: req.body.empleadoAtencion,
-            detalle: req.body.detalle,
-            usuario: req.body.usuario //asignar el id de usuario
-        });
+        // Verificar si el usuario, el cliente y la cancha existen
+        const usuarioExistente = await UsuarioModel.findById(req.body.usuario);
+        const clienteExistente = await ClienteModel.findById(req.body.cliente);
+        const canchaExistente = await CanchaModel.findById(req.body.cancha);
 
+        // Si alguno de los documentos no existe, devolver un error
+        if (!usuarioExistente || !clienteExistente || !canchaExistente) {
+            return res.status(404).json({ mensaje: 'Usuario, cliente o cancha no encontrados' });
+        }
+
+        // Crear un nuevo alquiler utilizando los datos proporcionados en el cuerpo de la solicitud
+        const nuevoAlquiler = new Alquiler(req.body);
         const alquilerGuardado = await nuevoAlquiler.save();
-
         res.status(201).json(alquilerGuardado);
     } catch (error) {
         res.status(400).json({ mensaje: error.message });
     }
 });
-
 
 //READ 
 // Obtener todos los alquileres
@@ -242,7 +239,7 @@ router.get('/clienteConMasHorasAlquiler', async (req, res) => {
 });
 
 //REPORTES
-//ALQUILER POR USUARIO
+//REPORTE 1 - ALQUILER POR USUARIO
 
 router.get('/alquilerXusuario/:id', async (req, res) => {
     const { id: usuarioId } = req.params; // Usar destructuring para extraer y renombrar `id` a `usuarioId`
@@ -257,6 +254,34 @@ router.get('/alquilerXusuario/:id', async (req, res) => {
         res.status(500).json({ mensaje: error.message });
     }
 });
+
+//REPORTES 2 - ALQUILERES POR USUARIO
+router.get('/alquilerxusuario', async (req, res) => {
+    try {   
+        const usuarios = await UsuarioModel.find();
+        const reporte = await Promise.all(
+            usuarios.map( async ( usuario1 ) => {
+                const alquileres = await Alquiler.find({ usuario: usuario1._id});
+                const totalHoras = alquileres.reduce((sum, Alquiler ) => sum + Alquiler.precio, 0);
+                return {
+                    usuario: {
+                        _id: usuario1._id,
+                        nombreusuario: usuario1.nombreusuario  
+                    },
+                    totalHoras,
+                    alquileres: alquileres.map( r => ( {
+                        _id: r._id,
+                        nombreCancha: r.nombrecancha,
+                        precio: r.precio
+                    }))
+                }
+            } )
+        )
+        res.json(reporte);
+    } catch (error){
+        res.status(500).json({ mensaje :  error.message})
+    }
+})
 
 
 module.exports = router;

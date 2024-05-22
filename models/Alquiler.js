@@ -1,17 +1,21 @@
 const mongoose = require('mongoose');
 
-const alquilerSchema = new mongoose.Schema({
-  cliente: String,
-  carnet: Number,
-  nombrecancha: String,
+const alquilerSchema = new mongoose.Schema({ 
+
+  descrEstado: String,
+  descrTipoUso: String,
   fechaSolicitud: Date,
   fecha_hora_inicio: Date,
   fecha_hora_fin: Date,  
-  precio: Number,
+  montototal: Number,
   duracion: Number,
-  estado: String,
-  empleadoAtencion: String,
-  detalle: String,
+  
+  cliente: {
+    type: mongoose.Schema.Types.ObjectId, ref: 'Cliente'
+  },
+  cancha: {
+    type: mongoose.Schema.Types.ObjectId, ref: 'Cancha'
+  },
   usuario: {
     type: mongoose.Schema.Types.ObjectId, ref: 'Usuario'
   }
