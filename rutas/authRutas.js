@@ -35,4 +35,8 @@ rutas.post('/iniciarsesion', async (req, res) => {
         res.status(500).json({mensaje: error.message});
     }
 });
+
+
+
+
 module.exports = rutas;
