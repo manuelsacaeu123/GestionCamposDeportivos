@@ -16,14 +16,7 @@ const alquilerSchema = new mongoose.Schema({
   cancha: {
     type: mongoose.Schema.Types.ObjectId, ref: 'Cancha'
   },
-  usuario: {
-    type: mongoose.Schema.Types.ObjectId, ref: 'Usuario'
-  }
+  
 });
 
 module.exports = mongoose.model('Alquiler', alquilerSchema, 'alquiler');
-
-
-
-
-

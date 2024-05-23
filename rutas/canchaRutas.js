@@ -10,7 +10,7 @@ router.post('/crearCancha', async (req, res) => {
             nombreCancha: req.body.nombreCancha,
             precioXhora: req.body.precioXhora,
             estado: req.body.estado,
-            descripcion: req.body.descripcion
+            tipoUso: req.body.tipoUso
         });
 
         const canchaGuardada = await nuevaCancha.save();

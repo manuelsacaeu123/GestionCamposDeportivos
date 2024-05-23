@@ -1,12 +1,15 @@
 const express = require('express');
 const request = require('supertest');
+const moment = require('moment');
 
-const alquileraRutas = require('../../rutas/alquilerRutas');
-const AlquilerModel = require('../../models/Alquiler');
 
 const mongoose = require('mongoose');
-const Alquiler = require('../../models/Alquiler');
 
+const ClienteModel = require('../../models/Cliente');
+
+const CanchaModel = require('../../models/Cancha');
+const alquileraRutas = require('../../rutas/alquilerRutas');
+const AlquilerModel = require('../../models/Alquiler');
 const app = express();
 
 app.use(express.json());
@@ -14,136 +17,85 @@ app.use('/alquileres', alquileraRutas);
 
 //describir un bloque de test
 
-/*
 describe('Prueba unitaria para alquileres', () => {
-    //se ejecutaantes de iniciar las pruebas
+    let createdCanchaId;
+    let createdClienteId;
+    let year = 2024; // Definir el año
 
     beforeAll(async () => {
-        //conexion con mongo
-
+        // Conexión con la base de datos
         await mongoose.connect('mongodb://127.0.0.1:27017/appCamposDeportivos', {
             useNewUrlParser: true
         });
-        await AlquilerModel.deleteMany({})
+
+        // LIMPIAR LAS COLECCIONES
+        await AlquilerModel.deleteMany({});
+        await CanchaModel.deleteMany({});
+        await ClienteModel.deleteMany({});
     });
 
-    //al finalizar las pruebas
-    afterAll(() => {
-        return mongoose.connection.close();
+    afterAll(async () => {
+        // Cierra la conexión con la base de datos al finalizar las pruebas
+        await mongoose.connection.close();
     });
 
+    test('Debería traer todos los alquileres realizados en una cancha específica y en un año específico', async () => {
+        // Crea primero los documentos de Cancha y Cliente necesarios
+        const createdCancha = await CanchaModel.create({
+            nombreCancha: 'CANCHA PRUEBA',
+            precioXhora: 50,
+            estado: true,
+            tipoUso: 'Tipo de Uso'
+        });
 
-    //PRIMER TEST
-    test('Deberia traer todas ls alquileres : GET: getAlquileres', async () => {
+        const createdCliente = await ClienteModel.create({
+            nombreCliente: 'CLIENTE PRUEBA',
+            carnet: 10,
+            celular: 222
+        });
+
+        // Guarda los IDs de Cancha y Cliente creados
+        createdCanchaId = createdCancha._id;
+        createdClienteId = createdCliente._id;
+        
+        // Crear fechas en formato adecuado
+        const fechaSolicitud = new Date(`${year}-05-25T08:00:00.000Z`);
+        const fechaInicio = new Date(`${year}-05-25T10:00:00.000Z`);
+        const fechaFin = new Date(`${year}-05-25T12:00:00.000Z`);
+
+        // Crea el documento de Alquiler con referencias a Cancha y Cliente
         await AlquilerModel.create({
-            cliente: 'Manuel 1',
-            carnet: 7367215,
-            nombrecancha: 'A',
-            fechaSolicitud: '2024-05-15T00:00:00.000+00:00',
-            fecha_hora_inicio: '2024-05-15T10:00:00.000+00:00',
-            fecha_hora_fin: '2024-05-15T12:00:00.000+00:00',
-            precio: 45,
-            duracion: 2,
-            estado: 'alquiler',
-            empleadoAtencion: 'Juanito',
-            detalle: 'ninguno'
-        }),
-            await AlquilerModel.create({
-                cliente: 'Manuel 2',
-                carnet: 12344,
-                nombrecancha: 'B',
-                fechaSolicitud: '2024-05-15T00:00:00.000+00:00',
-                fecha_hora_inicio: '2024-05-15T10:00:00.000+00:00',
-                fecha_hora_fin: '2024-05-15T12:00:00.000+00:00',
-                precio: 45,
-                duracion: 2,
-                estado: 'alquiler',
-                empleadoAtencion: 'Juanito',
-                detalle: 'ninguno'
-            })
+            descrEstado: 'ALQUILER',
+            descrTipoUso: 'ALQUILER prueba',
+            fechaSolicitud: fechaSolicitud,
+            fecha_hora_inicio: fechaInicio,
+            fecha_hora_fin: fechaFin,
+            montototal: 250,
+            duracion: 7,
+            cliente: createdClienteId,
+            cancha: createdCanchaId
+        });
 
-        //solicitud o request
-        const res = await request(app).get('/alquileres/getAlquileres');
-        //verificar la respuesta
+        // Realiza la solicitud GET al endpoint /alquileresXcancha/:canchaId/:anio
+        const res = await request(app).get(`/alquileres/alquileresXcancha/${createdCanchaId}/${year}`);
+        
+        // Verifica la respuesta
         expect(res.statusCode).toEqual(200);
-        expect(res.body).toHaveLength(2);
-    }, 10000);
-
-    test('deberia agregar un nuevo alquiler: POST: /CREAR', async () => {
-        const nuevoAlquiler = {
-            cliente: 'Manuel 3',
-            carnet: 123,
-            nombrecancha: 'C',
-            fechaSolicitud: '2024-05-18T00:00:00.000+00:00',
-            fecha_hora_inicio: '2024-05-18T10:00:00.000+00:00',
-            fecha_hora_fin: '2024-05-18T12:00:00.000+00:00',
-            precio: 50,
-            duracion: 2,
-            estado: 'alquiler',
-            empleadoAtencion: 'Juanito 2',
-            detalle: 'ninguno'
-        };
-
-        const res = await request(app)
-            .post('/alquileres/crear')
-            .send(nuevoAlquiler);
-        expect(res.statusCode).toEqual(201);
-        expect(res.body.cliente).toEqual(nuevoAlquiler.cliente);
-
-
-
+        expect(res.body).toHaveProperty('DATOS_CANCHA');
+        expect(res.body.DATOS_CANCHA).toHaveProperty('nombreCancha');
+        expect(res.body).toHaveProperty('ALQUILER');
+        expect(res.body.ALQUILER).toHaveLength(1);
+        expect(res.body.ALQUILER[0]).toHaveProperty('Tipo');
+        expect(res.body.ALQUILER[0]).toHaveProperty('Uso');
+        expect(res.body.ALQUILER[0]).toHaveProperty('Fecha_Hora_Inicio');
+        expect(res.body.ALQUILER[0]).toHaveProperty('Fecha_Hora_Fin');
+        expect(res.body.ALQUILER[0]).toHaveProperty('Total_Bs');
+        expect(res.body.ALQUILER[0]).toHaveProperty('Duracion');
+        expect(res.body.ALQUILER[0]).toHaveProperty('DATOS_CLIENTE');
+        expect(res.body.ALQUILER[0].DATOS_CLIENTE).toHaveProperty('Nombre');
+        expect(res.body.ALQUILER[0].DATOS_CLIENTE).toHaveProperty('Carnet');
+        expect(res.body.ALQUILER[0].DATOS_CLIENTE).toHaveProperty('Celular');
     });
-    test('deberia actualizar una tarea que ya existe: PUT /editar/_id', async () => {
-        const alquilerCreado = await AlquilerModel.create(
-            {
-                cliente: 'Manuel 1',
-                carnet: 7367215,
-                nombrecancha: 'A',
-                fechaSolicitud: '2024-05-18T00:00:00.000+00:00',
-                fecha_hora_inicio: '2024-05-18T10:00:00.000+00:00',
-                fecha_hora_fin: '2024-05-18T12:00:00.000+00:00',
-                precio: 50,
-                duracion: 2,
-                estado: 'alquiler',
-                empleadoAtencion: 'Juanito 2',
-                detalle: 'ninguno'
-            });
+});
 
-        const alquilerActualizar = {
-            cliente: ' MANUEL UPDATE(EDITADO)',
-            carnet: 2222,
-            nombrecancha: 'J',
-        }
-        const res = await request(app)
-            .put('/alquileres/editar/' + alquilerCreado._id)
-            .send(alquilerActualizar);
-        expect(res.statusCode).toEqual(200);
-        expect(res.body.cliente).toEqual(alquilerActualizar.cliente);
 
-    });
-
-    //revisar
-    test('Deberia eliminar un alquiler que ya existe : DELETE /delete/id ', async () => {
-        const alquilerCreado = await AlquilerModel.create(
-            {
-                cliente: 'Manuel respuesta',
-                carnet: 7367215,
-                nombrecancha: 'A',
-                fechaSolicitud: '2024-05-15T00:00:00.000+00:00',
-                fecha_hora_inicio: '2024-05-15T10:00:00.000+00:00',
-                fecha_hora_fin: '2024-05-15T12:00:00.000+00:00',
-                precio: 45,
-                duracion: 2,
-                estado: 'alquiler',
-                empleadoAtencion: 'Juanito',
-                detalle: 'ninguno'
-            });
-
-        const res = await request(app)
-            .delete('/alquileres/eliminar/' + alquilerCreado._id)
-
-        expect(res.statusCode).toEqual(200);
-        expect(res.body).toEqual({ mensaje: 'Alquiler eliminado' });
-
-    });
-});*/

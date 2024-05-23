@@ -57,12 +57,13 @@ const autenticar = async (req, res, next)=>{
 
 
 app.use('/auth', authRutas);
-app.use('/alquileres/', autenticar, alquilerRutas);
+/*app.use('/alquileres/', autenticar, alquilerRutas);
+app.use('/canchas/', autenticar, canchaRutas);
+app.use('/clientes/', autenticar ,clienteRutas);*/
 
-app.use('/canchas', canchaRutas);
-app.use('/clientes/', autenticar ,clienteRutas);
-
-
+app.use('/canchas',  canchaRutas);
+app.use('/clientes', clienteRutas)
+app.use('/alquileres', alquilerRutas)
 
 
 

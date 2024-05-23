@@ -1,6 +1,7 @@
 const express = require('express');
 const moment = require('moment');
 const router = express.Router();
+
 const Alquiler = require('../models/Alquiler');
 const UsuarioModel = require('../models/Usuario');
 const ClienteModel = require('../models/Cliente');
@@ -10,13 +11,13 @@ const CanchaModel = require('../models/Cancha');
 router.post('/crearAlquiler', async (req, res) => {
     try {
         // Verificar si el usuario, el cliente y la cancha existen
-        const usuarioExistente = await UsuarioModel.findById(req.body.usuario);
+      //  const usuarioExistente = await UsuarioModel.findById(req.body.usuario);
         const clienteExistente = await ClienteModel.findById(req.body.cliente);
         const canchaExistente = await CanchaModel.findById(req.body.cancha);
 
         // Si alguno de los documentos no existe, devolver un error
-        if (!usuarioExistente || !clienteExistente || !canchaExistente) {
-            return res.status(404).json({ mensaje: 'Usuario, cliente o cancha no encontrados' });
+        if (!clienteExistente || !canchaExistente) {
+            return res.status(404).json({ mensaje: 'cliente o cancha no encontrados' });
         }
 
         // Crear un nuevo alquiler utilizando los datos proporcionados en el cuerpo de la solicitud
@@ -238,145 +239,84 @@ router.get('/clienteConMasHorasAlquiler', async (req, res) => {
     }
 });
 
-//REPORTES
-//REPORTE 1 - ALQUILER POR USUARIO
+//REPORTES EXAMEN
+//RESERVAS REALIZADAS POR UN CLIENTE (CANCHA, CLIENTE, ALQUILER)
 
-router.get('/alquilerXusuario/:id', async (req, res) => {
-    const { id: usuarioId } = req.params; // Usar destructuring para extraer y renombrar `id` a `usuarioId`
+router.get('/reservasXcliente/:id', async (req, res) => {
+    const { id: clienteId } = req.params; // Usar destructuring para extraer y renombrar `id` a `clienteId`
     try {
-        const usuario = await UsuarioModel.findById(usuarioId);
-        if (!usuario) {
-            return res.status(404).json({ mensaje: 'Usuario no encontrado' });
-        }
-        const alquileres = await Alquiler.find({ usuario: usuarioId }).populate('usuario');
-        res.json(alquileres);
-    } catch (error) {
-        res.status(500).json({ mensaje: error.message });
-    }
-});
-
-//REPORTES 2 - ALQUILERES POR USUARIO
-router.get('/alquilerxusuario', async (req, res) => {
-    try {   
-        const usuarios = await UsuarioModel.find();
-        const reporte = await Promise.all(
-            usuarios.map( async ( usuario1 ) => {
-                const alquileres = await Alquiler.find({ usuario: usuario1._id});
-                const totalHoras = alquileres.reduce((sum, Alquiler ) => sum + Alquiler.precio, 0);
-                return {
-                    usuario: {
-                        _id: usuario1._id,
-                        nombreusuario: usuario1.nombreusuario  
-                    },
-                    totalHoras,
-                    alquileres: alquileres.map( r => ( {
-                        _id: r._id,
-                        nombreCancha: r.nombrecancha,
-                        precio: r.precio
-                    }))
-                }
-            } )
-        )
-        res.json(reporte);
-    } catch (error){
-        res.status(500).json({ mensaje :  error.message})
-    }
-})
-
-
-
-//REPORTES CON LOS OTROS MODELOS
-// Ruta para obtener un reporte avanzado de alquileres
-// Ruta para obtener un reporte avanzado de alquileres
-router.get('/reporteAvanzado', async (req, res) => {
-    try {
-        // Obtener todos los alquileres con información detallada de cliente, cancha y usuario
-        const alquileres = await Alquiler.find()
-            .populate('cliente')
-            .populate('cancha')
-            .populate('usuario');
-
-        // Mapear los alquileres para obtener información adicional
-        const reporte = alquileres.map(alquiler => ({
-            alquiler: {
-                id: alquiler._id,
-                descrEstado: alquiler.descrEstado,
-                descrTipoUso: alquiler.descrTipoUso,
-                fechaSolicitud: alquiler.fechaSolicitud,
-                fecha_hora_inicio: alquiler.fecha_hora_inicio,
-                fecha_hora_fin: alquiler.fecha_hora_fin,
-                montototal: alquiler.montototal,
-                duracion: alquiler.duracion,
-            },
-            cliente: {
-                id: alquiler.cliente._id,
-                nombreCliente: alquiler.cliente.nombreCliente,
-                carnet: alquiler.cliente.carnet,
-                celular: alquiler.cliente.celular,
-            },
-            cancha: {
-                id: alquiler.cancha._id,
-                nombreCancha: alquiler.cancha.nombreCancha,
-                precioXhora: alquiler.cancha.precioXhora,
-                estado: alquiler.cancha.estado,
-                descripcion: alquiler.cancha.descripcion,
-            },
-            usuario: {
-                id: alquiler.usuario._id,
-                nombreusuario: alquiler.usuario.nombreusuario,
-                // Agregar más campos del usuario si es necesario
-            }
-        }));
-
-        res.json(reporte);
-    } catch (error) {
-        res.status(500).json({ mensaje: error.message });
-    }
-});
-
-    
-// Ruta para obtener todas las reservas realizadas por un cliente específico Y EN QUE CANCHA
-router.get('/reservasPorCliente/:clienteId', async (req, res) => {
-    const { clienteId } = req.params;
-
-    try {
-        // Buscar al cliente por su ID
-        const cliente = await Cliente.findById(clienteId);
+        const cliente = await ClienteModel.findById(clienteId);
         if (!cliente) {
             return res.status(404).json({ mensaje: 'Cliente no encontrado' });
         }
+        const alquileres = await Alquiler.find({ cliente: clienteId, descrEstado: 'RESERVA' })
+            .populate('cliente')
+            .populate('cancha'); 
+        const alquileresFormateados = alquileres.map(alquiler => ({
+            Tipo: alquiler.descrEstado,
+            Uso: alquiler.descrTipoUso,
+            Fecha_Hora_Inicio: alquiler.fecha_hora_inicio,
+            Fecha_Hora_Fin: alquiler.fecha_hora_fin,
+            Total_Bs: alquiler.montototal,
+            Duracion: alquiler.duracion,
+            DATOS_CANCHA: {
+                Cancha: alquiler.cancha.nombreCancha,
+                Tipo_de_Uso: alquiler.cancha.tipoUso, 
 
-        // Buscar todas las reservas realizadas por el cliente
-        const reservas = await Alquiler.find({ cliente: clienteId }).populate('cancha');
+            }
+        }));
 
-        res.json({
-            cliente: {
-                id: cliente._id,
-                nombreCliente: cliente.nombreCliente,
-                carnet: cliente.carnet,
-                celular: cliente.celular
+        const respuesta = {
+            DATOS_CLIENTE: {
+                Nombre: cliente.nombreCliente,
+                Carnet: cliente.carnet,
+                Celular: cliente.celular
             },
-            reservas: reservas.map(reserva => ({
-                id: reserva._id,
-                fechaSolicitud: reserva.fechaSolicitud,
-                fecha_hora_inicio: reserva.fecha_hora_inicio,
-                fecha_hora_fin: reserva.fecha_hora_fin,
-                montototal: reserva.montototal,
-                duracion: reserva.duracion,
-                descrEstado: reserva.descrEstado,
-                cancha: {
-                    id: reserva.cancha._id,
-                    nombreCancha: reserva.cancha.nombreCancha,
-                    precioXhora: reserva.cancha.precioXhora,
-                    estado: reserva.cancha.estado,
-                    descripcion: reserva.cancha.descripcion
-                }
-            }))
-        });
+            RESERVAS_REALIZADAS: alquileresFormateados
+        };
+
+        res.json(respuesta);
     } catch (error) {
         res.status(500).json({ mensaje: error.message });
     }
 });
+
+//ALQUILRES REALIZADOS EN UNA CANCHA ESPECIFICA Y EN UN AÑO ESPECIFICO 
+router.get('/alquileresXcancha/:canchaId/:anio', async (req, res) => {
+    try {
+        const { canchaId, anio } = req.params;
+        const fechaInicioAnio = new Date(anio, 0, 1); 
+        const fechaFinAnio = new Date(anio, 11, 31, 23, 59, 59); 
+
+        const alquileres = await Alquiler.find({
+            cancha: canchaId,
+            descrEstado: "ALQUILER",
+            fecha_hora_inicio: { $gte: fechaInicioAnio },
+            fecha_hora_fin: { $lte: fechaFinAnio }
+        }).populate('cliente').populate('cancha').sort({ fecha_hora_inicio: 1 });
+
+        const cancha = await CanchaModel.findById(canchaId);
+
+        const reservasFormateadas = alquileres.map(alquiler => ({
+            Tipo: alquiler.descrEstado,
+            Uso: alquiler.descrTipoUso,
+            Fecha_Hora_Inicio: alquiler.fecha_hora_inicio,
+            Fecha_Hora_Fin: alquiler.fecha_hora_fin,
+            Total_Bs: alquiler.montototal,
+            Duracion: alquiler.duracion,
+            DATOS_CLIENTE: {
+                Nombre: alquiler.cliente.nombreCliente,
+                Carnet: alquiler.cliente.carnet,
+                Celular: alquiler.cliente.celular
+            }
+        }));
+
+        res.status(200).json({ DATOS_CANCHA: cancha, ALQUILER: reservasFormateadas });
+    } catch (error) {
+        res.status(500).json({ mensaje: error.message });
+    }
+});
+
 
 
 
